@@ -4,11 +4,11 @@ This is an implementation of a collaborative filtering algorithm on GPU using Al
 
 ## Getting started ##
 
-For quick start just change dir to ./Code and execute $ python main.py
+For quick start just change dir to ./CodeRecommender and execute $ python main.py
 
 *Note : two ready to run datasets are in the folder Datasets, the 100K is used by default*
 
-Other parameters are available in the **./Code/global_variables.py files**, to change the dataset, the number of features etc... edit the parameters in the file before running main.py
+Other parameters are available in the **./CodeRecommender/global_variables.py files**, to change the dataset, the number of features etc... edit the parameters in the file before running main.py
 
 ## Dependencies ##
 
