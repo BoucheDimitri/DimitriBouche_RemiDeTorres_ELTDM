@@ -77,19 +77,19 @@ def solve_row_subproblem(A_gpu, b_gpu, lamb):
 
 
 def isolate_usr_subproblem(R_gpu_usr, 
-						   Q_gpu,
-						   usr_no,
-						   Nr,
-						   Nr_gpu,
-						   Nf,
-						   Nf_gpu,
-						   nrated_usr,
-						   nrated_usr_gpu, 
-						   cum_nrated_usr_gpu,						 
-						   block1=(32, 1, 1), 
-						   grid1=(2048, 1), 
-						   block2=(32, 1, 1), 
-						   grid2=(2048, 1)):
+	                       Q_gpu,
+	                       usr_no,
+	                       Nr,
+	                       Nr_gpu,
+	                       Nf,
+	                       Nf_gpu,
+	                       nrated_usr,
+	                       nrated_usr_gpu, 
+	                       cum_nrated_usr_gpu,						 
+	                       block1=(32, 1, 1), 
+	                       grid1=(2048, 1), 
+	                       block2=(32, 1, 1), 
+	                       grid2=(2048, 1)):
 	"""
 	Get sub matrix of features of movies seen by user
 	and set of ratings from user u for those movies
