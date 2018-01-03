@@ -4,7 +4,7 @@ This is an implementation of a collaborative filtering algorithm on GPU using Al
 
 ## Getting started ##
 
-For quick start just change dir to ./RecommenderGPU/Code and execute $ python main.py
+For quick start just change dir to ./Code and execute $ python main.py
 
 *Note : two ready to run datasets are in the folder Datasets, the 100K is used by default*
 
