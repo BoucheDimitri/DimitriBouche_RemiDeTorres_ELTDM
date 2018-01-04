@@ -167,9 +167,12 @@ cum_nratings_mvi_gpu = gpuarray.to_gpu(cum_nratings_mvi)
 ###########################################################################
 
 if gv.RUN_CPU:
-    # Get params for exec from globla_variables.py
+    # Get params for exec from global_variables.py
     maxit = gv.MAXIT
     stop = gv.STOP
+
+    print("Running ALS optimization on CPU")
+    print(" ")
 
     # Start processor time clock (on unix, on windows will take the wall clock)
     start_cpu = time.clock()
@@ -193,7 +196,9 @@ if gv.RUN_CPU:
     elapsed_cpu = end_cpu - start_cpu
 
     # Print exec time
-    print("Elapsed cpu")
+    print(" ")
+    print(" ")
+    print("Elapsed time for CPU execution:")
     print(elapsed_cpu)
     print(" ")
     print(" ")
@@ -209,7 +214,7 @@ if gv.RUN_CPU:
     print(" ")
 
     # Print rmse on learn set throughout iterations
-    print("RMSE learns CPU")
+    print("RMSE learn CPU")
     print(rmsesl_cpu)
     print(" ")
     print(" ")
@@ -223,6 +228,14 @@ if gv.RUN_CPU:
 
 ###############ALS#GPU####################################################
 ##########################################################################
+
+# Get params for exec from global_variables.py
+maxit = gv.MAXIT
+stop = gv.STOP
+
+print("Running ALS optimization on GPU")
+print(" ")
+print(" ")
 
 # Start processor time clock (on unix, on windows will take the wall clock)
 start_gpu = time.clock()
@@ -260,8 +273,10 @@ end_gpu = time.clock()
 elapsed_gpu = end_gpu - start_gpu
 
 # print gpu exec time
-print("Elapsed gpu")
+print("Elapsed time for GPU execution:")
 print(elapsed_gpu)
+print(" ")
+print(" ")
 
 # Apply square root function to mean square errors
 rmsesl_gpu = [math.sqrt(i) for i in msesl_gpu]
@@ -274,7 +289,7 @@ print(" ")
 print(" ")
 
 # Print rmse on learn set throughout iterations
-print("RMSE learns GPU")
+print("RMSE learn GPU")
 print(rmsesl_gpu)
 print(" ")
 print(" ")
