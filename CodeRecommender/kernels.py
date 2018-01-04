@@ -4,39 +4,34 @@ Those scripts are compiled at the end of the file
 """
 
 
-
 import global_variables as gv
 import Kernel
 
 
-
-
-#Dictionnary storing the different kernel code by 
-#their signature in the C code
+# Dictionnary storing the different kernel code by
+# their signature in the C code
 kernel_dic = {}
 
 
-
-
-#######################KERNEL#SCRIPTS###############################################
-####################################################################################
+#######################KERNEL#SCRIPTS#####################################
+##########################################################################
 
 kernel_dic["SqrNormRowsKernel"] = """
-__global__ void SqrNormRowsKernel(float *Q, 
-							      float *Qnorm, 
+__global__ void SqrNormRowsKernel(float *Q,
+							      float *Qnorm,
 							      uint *Nrows)
 
 //Compute the vector of square norms of rows
 //of a matrix using 2D blocks
 
 //Designed for matrix that have a small
-//number of columns in comparison with 
-//their number of rows : 
+//number of columns in comparison with
+//their number of rows :
 
 //IMPORTANT : WILL NOT WORK IF Ncols > blockDim.y
 
 //Thus works for our features matrix since
-//the number of features is typically 
+//the number of features is typically
 //small enough to have blockDim.y >= N_FEATURES
 
 {
@@ -65,7 +60,7 @@ __global__ void SqrNormRowsKernel(float *Q,
 			cache[tx][ty] = q * q;
 		}
 
-		//Wait for each thread to be finished 
+		//Wait for each thread to be finished
 		//to sum the results
 		__syncthreads();
 
@@ -89,13 +84,11 @@ __global__ void SqrNormRowsKernel(float *Q,
 """
 
 
-
-
 kernel_dic["ModifyRowKernel"] = """
-__global__ void ModifyRowKernel(float *Q, 
+__global__ void ModifyRowKernel(float *Q,
 								uint *Nrows,
 								uint *Ncols,
-								float *q, 
+								float *q,
 								int *loc)
 
 //Kernel to modify a given row of a matrix inplace
@@ -103,7 +96,7 @@ __global__ void ModifyRowKernel(float *Q,
 //Nrows : Q's number of rows
 //Ncols : Q's number of columns
 //loc : index of the row to modify
-//q : data to replace row with 
+//q : data to replace row with
 
 {
 	int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -117,11 +110,9 @@ __global__ void ModifyRowKernel(float *Q,
 """
 
 
-
-
 kernel_dic["SqrErrVectKernel"] = """
-__global__ void SqrErrVectKernel(int *R, 
-						   	 	float *QPT, 
+__global__ void SqrErrVectKernel(int *R,
+						   	 	float *QPT,
 						   	 	uint *N,
 						  	 	uint *Nu,
 						   	 	float *sqrerr)
@@ -159,8 +150,6 @@ __global__ void SqrErrVectKernel(int *R,
  """
 
 
-
-
 kernel_dic["PenVectKernel"] = """
 __global__ void PenVectKernel(int *R,
 							  float *Pnorm,
@@ -168,7 +157,7 @@ __global__ void PenVectKernel(int *R,
 						   	  uint *N,
 						   	  float *pen)
 
-// Compute penalization vector 
+// Compute penalization vector
 // R is the matrix of ratings
 // Pnorm is the vector of norm of rows of P
 // Qnorm is the vector of norm of rows of Q
@@ -191,14 +180,12 @@ __global__ void PenVectKernel(int *R,
  """
 
 
-
-
 kernel_dic["RatedByUsrKernel"] = """
-__global__ void RatedByUsrKernel(uint *R, 
+__global__ void RatedByUsrKernel(uint *R,
 								 float *Ru,
-						         uint *Su, 
-						         uint *N, 
-						         uint *s, 
+						         uint *Su,
+						         uint *N,
+						         uint *s,
 						         uint *beg)
 
 //Select submatrix of R for the set of movie rated by a given user
@@ -206,7 +193,7 @@ __global__ void RatedByUsrKernel(uint *R,
 //Su is the container for vector of movies rated by u
 //N is the total number of ratings
 //s is the number of movies rated by user u
-//beg is the index of first rating from user u 	
+//beg is the index of first rating from user u
 
  {
 	int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -220,14 +207,12 @@ __global__ void RatedByUsrKernel(uint *R,
  """
 
 
-
-
 kernel_dic["MviRatingUsrsKernel"] = """
-__global__ void MviRatingUsrsKernel(uint *R, 
+__global__ void MviRatingUsrsKernel(uint *R,
 								    float *Rm,
-						            uint *Sm, 
-						            uint *N, 
-						            uint *r, 
+						            uint *Sm,
+						            uint *N,
+						            uint *r,
 						            uint *beg)
 
 //Select submatrix of R for the set of usrs who rated a given movie
@@ -249,15 +234,13 @@ __global__ void MviRatingUsrsKernel(uint *R,
  """
 
 
-
-
 kernel_dic["SubsetSelKernel"] = """
-__global__ void SubsetSelKernel(uint *Ss, 
+__global__ void SubsetSelKernel(uint *Ss,
 						        float *Q,
 						        float *Qs,
-						        uint *N, 
-						        uint *Nf, 
-						        uint *s, 
+						        uint *N,
+						        uint *Nf,
+						        uint *s,
 						        uint *beg){
 
 //Select a sub matrix of features for a given set of movies or of users
@@ -266,14 +249,14 @@ __global__ void SubsetSelKernel(uint *Ss,
 //Qs is the container to receive the submatrix of features
 //s is the number of seen movies by user u in user case
 //or the number of ratings received by movie m in movie case
-//beg is the index of first rating from user u in user case			
-//beg is the index of first user to rate m in movie case				    
+//beg is the index of first rating from user u in user case
+//beg is the index of first user to rate m in movie case
 
 	int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
 	while(tid < s[0] * Nf[0]){
 		uint mcount = tid / Nf[0];
-		//modulo operator is not supported thus we do 
+		//modulo operator is not supported thus we do
 		//the following to get the remains in integer division
 		uint fcount = tid - mcount * Nf[0];
 		Qs[tid] = Q[Ss[mcount] * Nf[0] + fcount];
@@ -284,71 +267,62 @@ __global__ void SubsetSelKernel(uint *Ss,
  """
 
 
-
-
 ####################COMPILATION#OF#SCRIPTS####################################
 ##############################################################################
 
 
-
-#Modify row of matrix inplace kernel
-modify_row = Kernel.Kernel("ModifyRowKernel", 
-						  kernel_dic["ModifyRowKernel"])
+# Modify row of matrix inplace kernel
+modify_row = Kernel.Kernel("ModifyRowKernel",
+                           kernel_dic["ModifyRowKernel"])
 modify_row.compile()
 
 
+# array of sqr norm of rows of a matrix kernel
+# FIRST DIM OF BLOCK MUST BE gv.N_THREADSX_SQRNORM because :
+# gv.N_THREADSX_SQRNORM and gv.N_FEATURES ar passed as constants
+# because they are used to define size of shared memory
 
-#array of sqr norm of rows of a matrix kernel
-#FIRST DIM OF BLOCK MUST BE gv.N_THREADSX_SQRNORM because : 
-#gv.N_THREADSX_SQRNORM and gv.N_FEATURES ar passed as constants
-#because they are used to define size of shared memory
-
-#Since this kernel uses block or 2D threads and 
-#we have the limitation of 1024 threads per block 
-#also if block=(gv.N_THREADSX_SQRNORM, Nthreadsy)
-#we must have Nthreadsy*gv.N_THREADSX_SQRNORM <= 1024
+# Since this kernel uses block or 2D threads and
+# we have the limitation of 1024 threads per block
+# also if block=(gv.N_THREADSX_SQRNORM, Nthreadsy)
+# we must have Nthreadsy*gv.N_THREADSX_SQRNORM <= 1024
 consts_sqrnorm = {'N_COLUMNS': gv.N_FEATURES,
-           		  'N_THREADS_X': gv.N_THREADSX_SQRNORM}
-sqr_norm = Kernel.Kernel("SqrNormRowsKernel", 
-					     kernel_dic["SqrNormRowsKernel"], 
-					     consts_sqrnorm)
+                  'N_THREADS_X': gv.N_THREADSX_SQRNORM}
+sqr_norm = Kernel.Kernel("SqrNormRowsKernel",
+                         kernel_dic["SqrNormRowsKernel"],
+                         consts_sqrnorm)
 sqr_norm.compile()
 
 
-
-#Select and return copy of the submatrix of movies id and ratings 
-#corresponding the movies rated by a given user
+# Select and return copy of the submatrix of movies id and ratings
+# corresponding the movies rated by a given user
 rated_by_usr = Kernel.Kernel("RatedByUsrKernel",
-						      kernel_dic["RatedByUsrKernel"])
+                             kernel_dic["RatedByUsrKernel"])
 rated_by_usr.compile()
 
 
-
-#Select and return copy of the submatrix of users id and ratings 
-#corresponding to the the rating base of a given movie
+# Select and return copy of the submatrix of users id and ratings
+# corresponding to the the rating base of a given movie
 rating_usrs = Kernel.Kernel("MviRatingUsrsKernel",
-						    kernel_dic["MviRatingUsrsKernel"])
+                            kernel_dic["MviRatingUsrsKernel"])
 rating_usrs.compile()
 
 
-
-#Select and return a copy of the sub matrix of features 
-#which column correspond either to the movies seen by a given 
-#user of the users that have rated a given movie
+# Select and return a copy of the sub matrix of features
+# which column correspond either to the movies seen by a given
+# user of the users that have rated a given movie
 subset_sel = Kernel.Kernel("SubsetSelKernel",
-						   kernel_dic["SubsetSelKernel"])
+                           kernel_dic["SubsetSelKernel"])
 subset_sel.compile()
 
 
-
-#Compute the vector of squared error for each row of the ratings matrix
-sqr_err_vect = Kernel.Kernel("SqrErrVectKernel", 
-							 kernel_dic["SqrErrVectKernel"])
+# Compute the vector of squared error for each row of the ratings matrix
+sqr_err_vect = Kernel.Kernel("SqrErrVectKernel",
+                             kernel_dic["SqrErrVectKernel"])
 sqr_err_vect.compile()
 
 
-
-#Compute the vector of penalization along the ratings matrix
-pen_vect = Kernel.Kernel("PenVectKernel", 
-						 kernel_dic["PenVectKernel"])
+# Compute the vector of penalization along the ratings matrix
+pen_vect = Kernel.Kernel("PenVectKernel",
+                         kernel_dic["PenVectKernel"])
 pen_vect.compile()
