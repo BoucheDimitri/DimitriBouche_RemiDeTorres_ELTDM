@@ -1,6 +1,6 @@
 """
 This is the kernels file which regroups cuda c scripts of kernels used in the project
-Those scripts are compiled at the end of the file
+Those scripts are compiled as python function at the end of the file using pycuda
 """
 
 
@@ -18,8 +18,8 @@ kernel_dic = {}
 
 kernel_dic["SqrNormRowsKernel"] = """
 __global__ void SqrNormRowsKernel(float *Q,
-							      float *Qnorm,
-							      uint *Nrows)
+                                  float *Qnorm,
+                                  uint *Nrows)
 
 //Compute the vector of square norms of rows
 //of a matrix using 2D blocks
@@ -35,61 +35,60 @@ __global__ void SqrNormRowsKernel(float *Q,
 //small enough to have blockDim.y >= N_FEATURES
 
 {
-	const uint Ncols = %(N_COLUMNS)s;
-	const uint Nthreadsx = %(N_THREADS_X)s;
+    const uint Ncols = %(N_COLUMNS)s;
+    const uint Nthreadsx = %(N_THREADS_X)s;
 
-	//const uint cacheSize = Nthreadsx * Ncols;
+    //const uint cacheSize = Nthreadsx * Ncols;
 
-	uint bx = blockIdx.x;
-	uint tx = threadIdx.x;
-	uint ty = threadIdx.y;
+    uint bx = blockIdx.x;
+    uint tx = threadIdx.x;
+    uint ty = threadIdx.y;
 
-	__shared__ float cache[Nthreadsx][Ncols];
+    __shared__ float cache[Nthreadsx][Ncols];
 
-	//Since each block does the computations
-	//for blockDim.x rows, we are finished
-	// when bx * blockDim.x < Nrows
-	while (bx * blockDim.x < Nrows[0]) {
+    //Since each block does the computations
+    //for blockDim.x rows, we are finished
+    // when bx * blockDim.x < Nrows
+    while (bx * blockDim.x < Nrows[0]) {
 
-		//ty is used to browse through the columns of the matrix
-		if (ty < Ncols){
+        //ty is used to browse through the columns of the matrix
+        if (ty < Ncols){
 
-			//float q = Q[bx * Nthreadsx + ty * Nrows[0] + tx];
-			float q = Q[(bx * Nthreadsx + tx) * Ncols + ty];
+            float q = Q[(bx * Nthreadsx + tx) * Ncols + ty];
+            
+            cache[tx][ty] = q * q;
+        }
 
-			cache[tx][ty] = q * q;
-		}
+        //Wait for each thread to be finished
+        //to sum the results
+        __syncthreads();
 
-		//Wait for each thread to be finished
-		//to sum the results
-		__syncthreads();
+        //First thread of each line of the block does the summing
+        if (ty == 0){
 
-		//First thread of each line of the block does the summing
-		if (ty == 0){
+             float sum = 0;
 
-			float sum = 0;
+             for (int i = 0; i < Ncols; i++)
+                 sum += cache[tx][i];
 
- 			for (int i = 0; i < Ncols; i++)
- 				sum += cache[tx][i];
+             //write the sum results in right spot of Qnorm
+             Qnorm[bx * blockDim.x + tx] = sum;
 
- 			//write the sum results in right spot of Qnorm
- 			Qnorm[bx * blockDim.x + tx] = sum;
+        }
 
-		}
-
-		//In case gridDim.x * blockDim.x < Ncols
-		bx += gridDim.x;
-	}
+        //In case gridDim.x * blockDim.x < Ncols
+        bx += gridDim.x;
+    }
 }
 """
 
 
 kernel_dic["ModifyRowKernel"] = """
 __global__ void ModifyRowKernel(float *Q,
-								uint *Nrows,
-								uint *Ncols,
-								float *q,
-								int *loc)
+                                uint *Nrows,
+                                uint *Ncols,
+                                float *q,
+                                int *loc)
 
 //Kernel to modify a given row of a matrix inplace
 //Q is the matrix to modify
@@ -98,24 +97,25 @@ __global__ void ModifyRowKernel(float *Q,
 //loc : index of the row to modify
 //q : data to replace row with
 
-{
-	int tid = threadIdx.x + blockIdx.x * blockDim.x;
+{    
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
-	while (tid < Ncols[0]){
-		Q[loc[0] * Ncols[0] + tid] = q[tid];
-		//In case we have Nthreadsx < Ncols
-		tid += blockDim.x * gridDim.x;
-	}
+    while (tid < Ncols[0]){
+    
+        Q[loc[0] * Ncols[0] + tid] = q[tid];
+        //In case we have Nthreadsx < Ncols
+        tid += blockDim.x * gridDim.x;
+    }
 }
 """
 
 
 kernel_dic["SqrErrVectKernel"] = """
 __global__ void SqrErrVectKernel(int *R,
-						   	 	float *QPT,
-						   	 	uint *N,
-						  	 	uint *Nu,
-						   	 	float *sqrerr)
+                                 float *QPT,
+                                 uint *N,
+                                 uint *Nu,
+                                 float *sqrerr)
 
 //Compute the square error of predicted ratings compared to true ones
 //R is the matrix of ratings
@@ -125,37 +125,38 @@ __global__ void SqrErrVectKernel(int *R,
 //sqerr is the container to get the result
 
 {
- 	uint tid = threadIdx.x + blockIdx.x * blockDim.x;
+    uint tid = threadIdx.x + blockIdx.x * blockDim.x;
 
- 	while (tid < N[0]) {
+    while (tid < N[0]) {
 
- 		int usr = R[tid];
- 		int mvi = R[N[0] + tid];
- 		int rtg = R[2*N[0] + tid];
+        int usr = R[tid];
+        int mvi = R[N[0] + tid];
+        int rtg = R[2*N[0] + tid];
 
- 		//Recreate the original grade range from 1 to 5
- 		float rtgf;
- 		rtgf = (float) 0.1*rtg;
+        //Recreate the original grade range from 1 to 5
+        float rtgf;
+        rtgf = (float) 0.1*rtg;
 
- 		//Compute error and store in sqerr
- 		//float err = rtgf - QPT[usr * Nm[0] + mvi];
- 		float err = rtgf - QPT[mvi * Nu[0] + usr];
- 		sqrerr[tid] = err*err;
+        //Compute error and store in sqerr
+        //float err = rtgf - QPT[usr * Nm[0] + mvi];
+        float err = rtgf - QPT[mvi * Nu[0] + usr];
+        sqrerr[tid] = err*err;
 
- 		//In case blockDim.x*gridDim.x < N[0]
- 		tid += blockDim.x * gridDim.x;
- 	 }
+        //In case blockDim.x*gridDim.x < N[0]
+        tid += blockDim.x * gridDim.x;
+        
+    }
 
- }
+}
  """
 
 
 kernel_dic["PenVectKernel"] = """
 __global__ void PenVectKernel(int *R,
-							  float *Pnorm,
-						   	  float *Qnorm,
-						   	  uint *N,
-						   	  float *pen)
+                              float *Pnorm,
+                              float *Qnorm,
+                              uint *N,
+                              float *pen)
 
 // Compute penalization vector
 // R is the matrix of ratings
@@ -165,28 +166,28 @@ __global__ void PenVectKernel(int *R,
 // pen is the container to write the result
 
 {
- 	uint tid = threadIdx.x + blockIdx.x * blockDim.x;
+    uint tid = threadIdx.x + blockIdx.x * blockDim.x;
 
- 	while (tid < N[0]) {
+    while (tid < N[0]) {
 
- 		int usr = R[tid];
- 		int mvi = R[N[0] + tid];
- 		pen [tid] = Pnorm[usr] + Qnorm[mvi];
+        int usr = R[tid];
+        int mvi = R[N[0] + tid];
+        pen [tid] = Pnorm[usr] + Qnorm[mvi];
 
- 		//In case blockDim.x*gridDim.x < N[0]
- 		tid += blockDim.x * gridDim.x;
- 	 }
- }
+        //In case blockDim.x*gridDim.x < N[0]
+        tid += blockDim.x * gridDim.x;
+    }
+}
  """
 
 
 kernel_dic["RatedByUsrKernel"] = """
 __global__ void RatedByUsrKernel(uint *R,
-								 float *Ru,
-						         uint *Su,
-						         uint *N,
-						         uint *s,
-						         uint *beg)
+                                 float *Ru,
+                                 uint *Su,
+                                 uint *N,
+                                 uint *s,
+                                 uint *beg)
 
 //Select submatrix of R for the set of movie rated by a given user
 //Ru is the container for ratings subvector
@@ -195,25 +196,26 @@ __global__ void RatedByUsrKernel(uint *R,
 //s is the number of movies rated by user u
 //beg is the index of first rating from user u
 
- {
-	int tid = threadIdx.x + blockIdx.x * blockDim.x;
+{
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
-	while(tid < s[0]){
-		Su[tid] = R[N[0] + beg[0] + tid];
-		Ru[tid] = 0.1 * R[2 * N[0] + beg[0] + tid];
-		tid += blockDim.x * gridDim.x;
-	}
- }
+    while(tid < s[0]){
+    
+        Su[tid] = R[N[0] + beg[0] + tid];
+        Ru[tid] = 0.1 * R[2 * N[0] + beg[0] + tid];
+        tid += blockDim.x * gridDim.x;
+    }
+}
  """
 
 
 kernel_dic["MviRatingUsrsKernel"] = """
 __global__ void MviRatingUsrsKernel(uint *R,
-								    float *Rm,
-						            uint *Sm,
-						            uint *N,
-						            uint *r,
-						            uint *beg)
+                                    float *Rm,
+                                    uint *Sm, 
+                                    uint *N,
+                                    uint *r,
+                                    uint *beg)
 
 //Select submatrix of R for the set of usrs who rated a given movie
 //Rm is the container for ratings subvector
@@ -223,25 +225,26 @@ __global__ void MviRatingUsrsKernel(uint *R,
 //beg is the index of first user to rate the movie
 
 {
-	int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
-	while(tid < r[0]){
-		Sm[tid] = R[beg[0] + tid];
-		Rm[tid] = 0.1 * R[2 * N[0] + beg[0] + tid];
-		tid += blockDim.x * gridDim.x;
-	}
- }
+    while(tid < r[0]){
+    
+        Sm[tid] = R[beg[0] + tid];
+        Rm[tid] = 0.1 * R[2 * N[0] + beg[0] + tid];
+        tid += blockDim.x * gridDim.x;
+    }
+}
  """
 
 
 kernel_dic["SubsetSelKernel"] = """
 __global__ void SubsetSelKernel(uint *Ss,
-						        float *Q,
-						        float *Qs,
-						        uint *N,
-						        uint *Nf,
-						        uint *s,
-						        uint *beg){
+                                float *Q,
+                                float *Qs,
+                                uint *N,
+                                uint *Nf,
+                                uint *s,
+                                uint *beg)
 
 //Select a sub matrix of features for a given set of movies or of users
 //Ss is either a set of movies in usr case either a set of usrs in mvi case
@@ -252,18 +255,21 @@ __global__ void SubsetSelKernel(uint *Ss,
 //beg is the index of first rating from user u in user case
 //beg is the index of first user to rate m in movie case
 
-	int tid = threadIdx.x + blockIdx.x * blockDim.x;
+{
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
-	while(tid < s[0] * Nf[0]){
-		uint mcount = tid / Nf[0];
-		//modulo operator is not supported thus we do
-		//the following to get the remains in integer division
-		uint fcount = tid - mcount * Nf[0];
-		Qs[tid] = Q[Ss[mcount] * Nf[0] + fcount];
-		//Qs[tid] = Ss[mcount];
-		tid += blockDim.x * gridDim.x;
-	}
- }
+    while(tid < s[0] * Nf[0]){
+        uint mcount = tid / Nf[0];
+        
+        //modulo operator is not supported thus we do
+        //the following to get the remains in integer division
+        
+        uint fcount = tid - mcount * Nf[0];
+        Qs[tid] = Q[Ss[mcount] * Nf[0] + fcount];
+
+        tid += blockDim.x * gridDim.x;
+    }
+}
  """
 
 
