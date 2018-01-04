@@ -16,7 +16,7 @@ CUDA toolkit >= 7.0 is mandatory (cusolver library was added in CUDA 7.0)
 
 The project was develpped using Python 2.7
 
-The following packages are mandatory (version on my setup is in parenthesis but other versions should work)
+The following packages are mandatory (version on our setups are indicated in parenthesis, other versions should work too though)
 
 * pandas (0.21.1)
 * numpy (1.13.3)
